@@ -134,3 +134,169 @@ This project is licensed under the MIT License.
 - **Inspiration**: Walmart’s business case studies on sales and supply chain optimization.
 
 ---
+
+SELECT * FROM walmart_db.walmart;
+
+select * from walamrt;
+
+
+
+
+
+
+
+-- business problem;
+-- Q1. find the different payment mehod and number of transaction ,number of quantity sold?
+
+select
+	  payment_method,
+      count(*),
+      sum(quantity) as no_qty_sld
+from walmart
+group by payment_method;
+
+
+-- project question #2
+-- identify the highest-rated category in each branch,displaying the branch, category 
+-- AVG RATING?
+	
+ select *
+ from (   
+	 select
+		 branch,
+		 category ,
+		 avg(rating) as avg_rating,
+		 rank() over(partition by branch order by avg(rating) desc) as ranking
+	 from walmart
+	 group by branch , category
+) ranked_data
+where ranking = 1;
+    
+
+-- q3.identify the busiest day for the each branch based on the number of transactions
+
+select *
+from (
+	SELECT
+		branch,
+		DAYNAME(STR_TO_DATE(date, '%d/%m/%y')) AS formatted_date,
+		count(*) as no_transaction,
+		rank() over (partition by branch order by count(*) desc) as ranking
+	FROM walmart
+	group by 1, 2
+) ranked_data
+where ranking = 1;
+
+
+-- q4 different payment method of transaction and no_qty_sold for each payment method
+
+select
+	  payment_method,
+      count(*),
+      sum(quantity) as no_qty_sold
+from walmart
+group by payment_method;
+
+-- q5. determine the avg ,min, max rating for the each city
+-- list the city
+
+select * from walmart_db.walmart;
+
+select
+    city,
+    category,
+    min(rating) as min_rating,
+    max(rating) as max_rating,
+    avg(rating) as avg_rating
+from walmart
+group by 1, 2;
+
+-- q6 calculate the total profit for each catagory by considering total_profit as (unit_price * quantity * profit_margin). 
+-- list category and total_profit,ordered from highest to lowest profit.
+
+select
+	category,
+    sum(total) as total_revenue,
+    sum(total * profit_margin) as profit
+from walmart
+group by 1;
+
+-- q7  determine the most common payment method for each branch.
+-- display branch and the preferred_payment method.
+
+with cte
+as
+(select
+    branch,
+    payment_method,
+    count(*) as total_trans,
+    rank() over(partition by branch order by count(*) desc) as rank_
+from walmart
+group by 1, 2
+)
+select *
+from cte
+where rank_ = 1;
+
+-- q8 categorize the sales into 3 group MORNING, AFTERNOON, EVENING
+-- find out each of the shift and number of invoices.
+
+SELECT TIME(time) FROM walmart;
+
+SELECT
+     branch,
+    CASE
+        WHEN HOUR(time) < 12 THEN 'morning'
+        WHEN HOUR(time) BETWEEN 12 AND 17 THEN 'afternoon'
+        ELSE 'evening'
+    END AS day_time,
+    COUNT(*) as transaction_count
+FROM walmart
+GROUP BY branch, day_time
+order by branch, transaction_count desc;
+
+
+
+-- q9 idetify the 5 branch with highest decrease ratio 
+-- revenue compare to last year(current year 2023 and last year 2022)
+-- rdr(revenue decrease ratio(last_rev - current-rev)*100
+
+
+-- 2022 sales
+with revenue_2022
+as
+(
+	SELECT
+		branch,
+		sum(total) as revenue
+	FROM walmart
+	WHERE YEAR(STR_TO_DATE(date, '%d/%m/%y')) = 2022
+	group by 1
+),
+
+revenue_2023
+as
+(
+    SELECT
+		branch,
+		sum(total) as revenue
+	FROM walmart
+	WHERE YEAR(STR_TO_DATE(date, '%d/%m/%y')) = 2023
+	group by 1     
+)
+select
+	ls.branch,
+    ls.revenue as last_year_revenue,
+    cs.revenue as cr_year_revenue,
+    round((ls.revenue - cs.revenue) / ls.revenue * 100,2) as revenue_decrease_ratio
+from revenue_2022 as ls
+join
+revenue_2023 as cs
+on ls.branch = cs.branch
+where
+	ls.revenue > cs.revenue
+order by 4 desc
+limit 5
+
+-- well done
+
